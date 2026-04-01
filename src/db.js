@@ -2,9 +2,9 @@
 export const initDB = () => {
   if (!localStorage.getItem('doc_patients')) {
     localStorage.setItem('doc_patients', JSON.stringify([
-      { id: 1, firstName: 'mohssen', lastName: 'ben ali', dob: '1975-06-15', lastVisit: '2026-03-10' },
-      { id: 2, firstName: 'aliya', lastName: 'belaiid', dob: '1982-11-22', lastVisit: '2026-02-05' },
-      { id: 3, firstName: 'adb', lastName: 'el faz', dob: '1955-01-08', lastVisit: '2025-12-12' }
+      { id: 1, firstName: 'Mohsen', lastName: 'Ben Ali', dob: '1975-06-15', sex: 'm', lastVisit: '2026-03-10' },
+      { id: 2, firstName: 'Aliya', lastName: 'Belaid', dob: '1998-11-22', sex: 'f', lastVisit: '2026-02-05' },
+      { id: 3, firstName: 'Abdel', lastName: 'El Faz', dob: '1955-01-08', sex: 'm', lastVisit: '2025-12-12' }
     ]));
   }
 
@@ -102,4 +102,32 @@ export const loginDoctor = (email, password) => {
     throw new Error("Identifiants incorrects.");
   }
   return doc;
+};
+
+// ==================== SESSIONS & HISTORY API ====================
+export const saveSession = (patientId, sessionData) => {
+  const sessions = JSON.parse(localStorage.getItem('doc_sessions')) || [];
+  const newSession = {
+    id: Date.now(),
+    patientId,
+    date: new Date().toISOString(),
+    ...sessionData
+  };
+  sessions.push(newSession);
+  localStorage.setItem('doc_sessions', JSON.stringify(sessions));
+  return newSession;
+};
+
+export const getPatientHistory = (patientId) => {
+  const sessions = JSON.parse(localStorage.getItem('doc_sessions')) || [];
+  // Sort by date descending
+  return sessions
+    .filter(s => s.patientId === patientId)
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+};
+
+export const deleteSession = (sessionId) => {
+  const sessions = JSON.parse(localStorage.getItem('doc_sessions')) || [];
+  const filtered = sessions.filter(s => s.id !== sessionId);
+  localStorage.setItem('doc_sessions', JSON.stringify(filtered));
 };
