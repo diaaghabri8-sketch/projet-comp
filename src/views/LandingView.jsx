@@ -173,9 +173,9 @@ const LandingView = ({ onNavigate }) => {
             />
             <div className="team-grid">
                {[
-                  { name: "GHABRI Diaa", role: "Élève Ingénieur" },
-                  { name: "SAAFI Eya", role: "Élève Ingénieur" },
-                  { name: "YAHYAOUI Mohamed Amir", role: "Élève Ingénieur" }
+                  { name: "GHABRI Diaa", role: "Élève Ingénieur", photo: "/team/diaa.jpg" },
+                  { name: "SAAFI Eya", role: "Élève Ingénieur", photo: "/team/eya.jpg" },
+                  { name: "YAHYAOUI Mohamed Amir", role: "Élève Ingénieur", photo: "/team/amir.jpg" }
                ].map((member, i) => (
                   <motion.div
                      key={i}
@@ -297,8 +297,10 @@ const LandingView = ({ onNavigate }) => {
         /* Team */
         .team-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; }
         .team-card { padding: 3rem; border-radius: 32px; transition: 0.4s var(--ease-expo); display: flex; flex-direction: column; align-items: center; text-align: center; }
-        .team-photo-placeholder { width: 120px; height: 120px; border-radius: 50%; background: linear-gradient(145deg, var(--surface), var(--secondary)); border: 2px dashed rgba(99, 102, 241, 0.3); display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; overflow: hidden; }
-        .photo-inner { color: var(--text-muted); font-size: 0.8rem; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
+        .team-photo-wrapper { width: 180px; height: 180px; border-radius: 50px; background: linear-gradient(145deg, var(--surface), var(--secondary)); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; margin-bottom: 2rem; overflow: hidden; position: relative; box-shadow: var(--shadow-md); transition: 0.3s; }
+        .team-photo-wrapper:hover { transform: scale(1.05); box-shadow: var(--shadow-lg); border-color: var(--primary); }
+        .team-img { width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+        .photo-inner-fallback { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: var(--gradient-tech); color: white; font-family: 'Outfit'; font-size: 3.5rem; font-weight: 700; }
         .team-name { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text); }
         .team-role { font-size: 0.95rem; color: var(--primary); font-weight: 500; }
 
