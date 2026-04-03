@@ -65,15 +65,14 @@ const LandingView = ({ onNavigate }) => {
             </div>
 
             <div className="hero-text full-width">
-               <motion.h1 className="hero-heading gradient-text text-center mt-4" variants={titleVariants}>
-                  {"StressPulse".split('').map((char, i) => (
-                     <motion.span key={i} initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05, type: 'spring' }}>{char}</motion.span>
-                  ))}
-                  <br />
-                  {"Analytique".split('').map((char, i) => (
-                     <motion.span key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1 + i * 0.05 }}>{char}</motion.span>
-                  ))}
-               </motion.h1>
+                <motion.h1 className="hero-heading gradient-text text-center mt-4" variants={titleVariants} style={{ fontSize: '2.8rem', lineHeight: '1.2' }}>
+                   {"Stress Analyzer".split('').map((char, i) => (
+                      <motion.span key={i} initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05, type: 'spring' }}>{char}</motion.span>
+                   ))}
+                </motion.h1>
+                <div className="pfa-full-name text-center mt-2 opacity-80 uppercase tracking-widest font-bold text-xs color-primary">
+                   Système de détection de stress basé sur l'analyse des signaux ppg
+                </div>
                <motion.p className="hero-subtext m-auto text-center mt-6" variants={titleVariants}>
                   Déterminer les niveaux de stress à partir d’un signal PPG en temps réel grâce à une télémétrie de précision.
                </motion.p>
@@ -187,9 +186,15 @@ const LandingView = ({ onNavigate }) => {
                      viewport={{ once: true }}
                      transition={{ delay: i * 0.2, duration: 0.5 }}
                   >
-                     <div className="team-photo-placeholder m-auto">
-                        <div className="photo-inner">
-                           <span>Photo<br />{member.name.split(' ')[0]}</span>
+                     <div className="team-photo-wrapper m-auto">
+                        <img 
+                           src={member.photo} 
+                           alt={member.name}
+                           className="team-img"
+                           onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                        />
+                        <div className="photo-inner-fallback">
+                           <span>{member.name.charAt(0)}</span>
                         </div>
                      </div>
                      <h3 className="team-name mt-6">{member.name}</h3>
@@ -203,8 +208,9 @@ const LandingView = ({ onNavigate }) => {
          <footer className="footer-premium">
             <div className="footer-grid">
                <div className="f-col">
-                  <div className="f-logo">Pulse <strong>Link</strong></div>
-                  <p>La plateforme santé open-source pour moniteur ECG personnel.</p>
+                  <div className="f-logo">Stress <strong>Analyzer</strong></div>
+                  <p>Système de détection de stress basé sur l'analyse des signaux ppg.</p>
+                  <p className="text-xs opacity-50 mt-2">PFA - Génie Biomédical</p>
                </div>
                <div className="f-col">
                   <h5>Plateforme</h5>
@@ -216,7 +222,7 @@ const LandingView = ({ onNavigate }) => {
                </div>
             </div>
             <div className="footer-bottom">
-               &copy; 2026 Pulse Link - Bio-Medical Interface.
+               &copy; 2026 ISTMT - UTM | Bio-Medical PFA Project.
             </div>
          </footer>
 

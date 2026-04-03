@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock as ClockIcon, LogOut, Sun, Moon, Bluetooth, ShieldCheck, Heart } from 'lucide-react';
+import { Clock as ClockIcon, LogOut, Sun, Moon, Bluetooth, ShieldCheck, Heart, ArrowLeft } from 'lucide-react';
 import Magnetic from './Magnetic';
 import { motion, AnimatePresence, useScroll } from 'framer-motion';
 
@@ -9,10 +9,10 @@ const Clock = () => {
     const timer = setInterval(() => setTime(new Date().toLocaleTimeString('fr-FR')), 1000);
     return () => clearInterval(timer);
   }, []);
-  return <div className="clock-display"><ClockIcon size={14} className="mr-1"/> {time}</div>;
+  return <div className="clock-display"><ClockIcon size={14} className="mr-1" /> {time}</div>;
 };
 
-const Navbar = ({ doctor, onNavigate, onLogout, theme, toggleTheme }) => {
+const Navbar = ({ doctor, currentView, onNavigate, onLogout, theme, toggleTheme }) => {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -24,32 +24,63 @@ const Navbar = ({ doctor, onNavigate, onLogout, theme, toggleTheme }) => {
   return (
     <nav className={`navbar glass-card ${scrolled ? 'navbar-scrolled' : ''}`}>
       <div className="scroll-progress-container">
-        <motion.div 
-           className="scroll-progress-fill"
-           style={{ scaleX: useScroll().scrollYProgress }}
+        <motion.div
+          className="scroll-progress-fill"
+          style={{ scaleX: useScroll().scrollYProgress }}
         />
       </div>
       <div className={`nav-container ${scrolled ? 'nav-compact' : ''}`}>
         <div className="nav-left">
+          <AnimatePresence>
+            {currentView !== 'landing' && currentView !== 'dashboard' && (
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+              >
+                <Magnetic>
+                  <button
+                    className="back-btn-v2"
+                    onClick={() => {
+                      if (currentView === 'session') onNavigate('dashboard');
+                      else onNavigate('landing');
+                    }}
+                    title="Retour"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+                </Magnetic>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <Magnetic>
+            <div className="pfa-logos">
+              <img src="/istmt_logo.png" className="pfa-logo-img large" alt="ISTMT" />
+            </div>
             <div className="nav-brand" onClick={() => doctor ? onNavigate('dashboard') : onNavigate('landing')}>
-              <div className="logo-box-v2">
-                 <Heart size={20} fill="currentColor" stroke="none" />
+              <div className="pfa-title-group">
+                <span className="pfa-sub">PFA Projet</span>
+                <span className="brand-text-v2">Stress <strong>Analyzer</strong></span>
               </div>
-              <span className="brand-text-v2">Stress <strong>Pulse</strong></span>
             </div>
           </Magnetic>
-          
-          <div className="nav-pills-v2">
-             <div className="pill-item"><Bluetooth size={12}/> Connected</div>
-             <div className="pill-item"><ShieldCheck size={12}/> Secure</div>
-          </div>
+        </div>
+
+        <div className="pfa-official-header">
+           <span>Ministère de l'Enseignement Supérieur et de la Recherche Scientifique</span>
+           <span>Université de Tunis El Manar</span>
+           <span>Institut Supérieur des Technologies Médicales de Tunis</span>
         </div>
 
         <div className="nav-actions">
-          <Clock />
+          <div className="nav-pills-v2">
+            <div className="pill-item"><Bluetooth size={12} /> Live</div>
+            <div className="pill-item"><ShieldCheck size={12} /> Secure</div>
+          </div>
           
           <div className="actions-divider"></div>
+          <Clock />
           
           <Magnetic>
             <button className="icon-btn theme-toggle-v2" onClick={toggleTheme} aria-label="Changer le thème">
@@ -62,20 +93,25 @@ const Navbar = ({ doctor, onNavigate, onLogout, theme, toggleTheme }) => {
                <div className="avatar-v2">{doctor.name.charAt(0)}</div>
                <span className="user-name-v2">{doctor.name}</span>
                <button className="icon-btn-text text-danger" onClick={onLogout}>
-                 <LogOut size={16} /> Quitter
+                 <LogOut size={16} />
                </button>
             </div>
           ) : (
             <div className="auth-links-v2">
-               <Magnetic>
-                 <button className="btn btn-primary-v2" onClick={() => onNavigate('login')}>Connexion</button>
-               </Magnetic>
+              <Magnetic>
+                <button className="btn btn-primary-v2" onClick={() => onNavigate('login')}>Login</button>
+              </Magnetic>
             </div>
           )}
+          <div className="actions-divider"></div>
+          <div className="pfa-logos">
+            <img src="/utm_logo.png" className="pfa-logo-img large" alt="UTM" />
+          </div>
         </div>
       </div>
-      
-      <style dangerouslySetInnerHTML={{ __html: `
+
+      <style dangerouslySetInnerHTML={{
+        __html: `
         .scroll-progress-container { position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: transparent; overflow: hidden; }
         .scroll-progress-fill { height: 100%; background: var(--gradient-tech); transform-origin: left; }
         
@@ -93,6 +129,39 @@ const Navbar = ({ doctor, onNavigate, onLogout, theme, toggleTheme }) => {
         .navbar-scrolled { border-bottom: 2px solid var(--primary); backdrop-filter: blur(40px) saturate(180%); }
         .avatar-v2 { width: 34px; height: 34px; background: var(--primary); color: white; border-radius: 50%; font-family: 'Outfit'; display: flex; justify-content: center; align-items: center; font-weight: 600; }
         .user-profile-v2 { display: flex; align-items: center; gap: 0.75rem; background: var(--secondary); padding: 0.3rem 0.6rem 0.3rem 0.3rem; border-radius: 99px; border: 1px solid var(--border); }
+        .back-btn-v2 { width: 36px; height: 36px; border-radius: 12px; background: var(--secondary); border: 1px solid var(--border); color: var(--text-main); display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.3s; margin-right: -0.5rem; }
+        .back-btn-v2:hover { background: var(--surface-hover); border-color: var(--primary); color: var(--primary); }
+        
+        /* PFA Custom Styling */
+        .pfa-logos { display: flex; align-items: center; justify-content: center; z-index: 10; }
+        .pfa-logo-img { height: 45px; width: auto; object-fit: contain; filter: drop-shadow(0 0 10px rgba(255,255,255,0.1)); transition: 0.3s; }
+        .pfa-logo-img.large { height: 65px; }
+        .pfa-title-group { display: flex; flex-direction: column; line-height: 1.1; margin-left: 0.5rem; }
+        .pfa-sub { font-size: 0.5rem; text-transform: uppercase; letter-spacing: 1px; color: var(--primary); font-weight: 800; font-family: 'JetBrains Mono'; }
+        
+        .pfa-official-header {
+           flex: 1;
+           display: flex;
+           flex-direction: column;
+           align-items: center;
+           justify-content: center;
+           text-align: center;
+           gap: 2px;
+           margin: 0 1rem;
+           opacity: 0.9;
+        }
+        .pfa-official-header span {
+           font-size: 0.75rem;
+           font-family: 'Outfit';
+           text-transform: uppercase;
+           letter-spacing: 0.5px;
+           color: var(--text-main);
+           white-space: nowrap;
+           font-weight: 600;
+        }
+        .pfa-official-header span:first-child { font-weight: 500; font-size: 0.65rem; opacity: 0.7; }
+        .nav-container { padding: 0.5rem 1rem; }
+        .nav-compact { padding: 0.3rem 1rem; }
       `}} />
     </nav>
   );

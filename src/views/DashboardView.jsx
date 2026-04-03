@@ -669,33 +669,60 @@ const SessionChart = ({ data, color, unit = '' }) => {
    if (points.length < 2) return <div className="text-muted text-xs p-4">Pas assez de données.</div>;
 
    const pathData = `M ${points.map(p => `${p.x},${p.y}`).join(' L ')}`;
-   const midVal = (maxVal + minVal) / 2;
-   const midY = margin.top + chartHeight / 2;
+   const q1Val = minVal + (maxVal - minVal) * 0.25;
+   const q3Val = minVal + (maxVal - minVal) * 0.75;
    
    return (
      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} style={{ overflow: 'visible' }}>
        {/* 📈 AXES & GRID */}
-       {/* Y-Axis Grid */}
-       <line x1={margin.left} y1={margin.top} x2={width - margin.right} y2={margin.top} stroke="rgba(255,255,255,0.05)" strokeWidth="1" strokeDasharray="4" />
-       <line x1={margin.left} y1={midY} x2={width - margin.right} y2={midY} stroke="rgba(255,255,255,0.05)" strokeWidth="1" strokeDasharray="4" />
-       <line x1={margin.left} y1={margin.top + chartHeight} x2={width - margin.right} y2={margin.top + chartHeight} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+       {/* Y-Axis Grid Subdivisions */}
+       {[0, 0.25, 0.5, 0.75, 1].map(r => (
+         <g key={r}>
+           <line 
+             x1={margin.left} 
+             y1={margin.top + chartHeight * (1-r)} 
+             x2={width - margin.right} 
+             y2={margin.top + chartHeight * (1-r)} 
+             stroke="rgba(255,255,255,0.05)" 
+             strokeWidth="1" 
+             strokeDasharray={r === 0 || r === 1 ? "" : "4"} 
+           />
+           <text 
+             x={margin.left - 8} 
+             y={margin.top + chartHeight * (1-r) + 4} 
+             textAnchor="end" 
+             fontSize="8" 
+             fill={r === 1 ? color : "rgba(255,255,255,0.3)"}
+             fontWeight={r === 1 ? "700" : "400"}
+           >
+             {Math.round(minVal + (maxVal - minVal) * r)}{r === 1 ? unit : ''}
+           </text>
+         </g>
+       ))}
        
        <line x1={margin.left} y1={margin.top} x2={margin.left} y2={margin.top + chartHeight} stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
        
-       {/* Labels Amplitudes (Y) */}
-       <text x={margin.left - 8} y={margin.top + 4} textAnchor="end" fontSize="9" fontWeight="600" fill={color}>{Math.round(maxVal)}{unit}</text>
-       <text x={margin.left - 8} y={midY + 4} textAnchor="end" fontSize="9" fill="rgba(255,255,255,0.3)">{Math.round(midVal)}</text>
-       <text x={margin.left - 8} y={margin.top + chartHeight} textAnchor="end" fontSize="9" fill="rgba(255,255,255,0.4)">{Math.round(minVal)}{unit}</text>
-       
-       {/* X-Axis Vertical markers */}
-       {[0.25, 0.5, 0.75].map(ratio => (
-         <line key={ratio} x1={margin.left + ratio * chartWidth} y1={margin.top + chartHeight} x2={margin.left + ratio * chartWidth} y2={margin.top + chartHeight + 4} stroke="rgba(255,255,255,0.2)" />
+       {/* X-Axis Vertical markers & Labels */}
+       {[0, 0.25, 0.5, 0.75, 1].map(r => (
+         <g key={r}>
+           <line 
+             x1={margin.left + r * chartWidth} 
+             y1={margin.top + chartHeight} 
+             x2={margin.left + r * chartWidth} 
+             y2={margin.top + chartHeight + 4} 
+             stroke="rgba(255,255,255,0.2)" 
+           />
+           <text 
+             x={margin.left + r * chartWidth} 
+             y={height - 4} 
+             fontSize="8" 
+             fill="rgba(255,255,255,0.4)" 
+             textAnchor={r === 0 ? "start" : r === 1 ? "end" : "middle"}
+           >
+             {r === 0 ? 'Début' : r === 1 ? 'Fin' : `${Math.round(r * 100)}%`}
+           </text>
+         </g>
        ))}
-
-       {/* Labels Temps (X) */}
-       <text x={margin.left} y={height - 4} fontSize="9" fill="rgba(255,255,255,0.4)">0s</text>
-       <text x={margin.left + 0.5 * chartWidth} y={height - 4} textAnchor="middle" fontSize="9" fill="rgba(255,255,255,0.3)">Moy</text>
-       <text x={width - margin.right} y={height - 4} textAnchor="end" fontSize="9" fill="rgba(255,255,255,0.4)">Temps</text>
 
        <path d={pathData} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
        <circle cx={points[points.length-1].x} cy={points[points.length-1].y} r="3" fill={color} />

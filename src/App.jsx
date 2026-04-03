@@ -99,6 +99,7 @@ function App() {
       
       <Navbar 
         doctor={doctor} 
+        currentView={view}
         onNavigate={handleNavigate} 
         onLogout={handleLogout} 
         theme={theme} 

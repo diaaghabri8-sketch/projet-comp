@@ -362,9 +362,9 @@ const SessionView = ({ patient, onEndSession }) => {
     if (isRecording && sessionStatus === 'running') {
       timerRef.current = setInterval(() => {
         setRecordingTime(prev => {
-           const next = prev + 1;
-           recordingTimeRef.current = next;
-           return next;
+          const next = prev + 1;
+          recordingTimeRef.current = next;
+          return next;
         });
       }, 1000);
     } else {
@@ -408,26 +408,26 @@ const SessionView = ({ patient, onEndSession }) => {
     setIsRecording(false);
     const finalDuration = Math.round((Date.now() - recordingStartTimeRef.current) / 1000);
     recordedSessionRef.current.duration = finalDuration;
-    
+
     // SAVE TO DB
     try {
       saveSession(patient.id, {
         duration: finalDuration,
-        avgStress: (function() {
+        avgStress: (function () {
           const m = recordedSessionRef.current.metrics;
           if (m.length === 0) return 0;
-          return Math.round(m.reduce((a,b)=>a+b.stressScore, 0)/m.length);
+          return Math.round(m.reduce((a, b) => a + b.stressScore, 0) / m.length);
         })(),
-        avgBpm: (function() {
+        avgBpm: (function () {
           const m = recordedSessionRef.current.metrics;
           if (m.length === 0) return 0;
           const bm = m.filter(v => v.bpm > 0);
-          return bm.length > 0 ? Math.round(bm.reduce((a,b)=>a+b.bpm, 0)/bm.length) : 0;
+          return bm.length > 0 ? Math.round(bm.reduce((a, b) => a + b.bpm, 0) / bm.length) : 0;
         })(),
-        avgRmssd: (function() {
+        avgRmssd: (function () {
           const m = recordedSessionRef.current.metrics;
           if (m.length === 0) return 0;
-          return Math.round(m.reduce((a,b)=>a+b.rmssd, 0)/m.length);
+          return Math.round(m.reduce((a, b) => a + b.rmssd, 0) / m.length);
         })(),
         data: recordedSessionRef.current
       });
@@ -579,7 +579,7 @@ const SessionView = ({ patient, onEndSession }) => {
 
     const metrics = {
       rmssd: Math.round(rmssd * 1000), // conversion en ms pour l'affichage
-      hf: Number(hf * 1000),           // scaling ajusté
+      hf: Number(hf * 1000000),           // scaling ajusté
       spectrum,
       bpm: bpm // Stabilized BPM from state
     };
@@ -803,9 +803,7 @@ const SessionView = ({ patient, onEndSession }) => {
                 <div className="score-value">{compositeScore}</div>
               </div>
 
-              <div className="weighted-info mt-4">
-                <p>Analyse pondérée (RMSSD x5 | HF x4 | BPM x2)</p>
-              </div>
+
             </motion.div>
 
             {/* New Medical Metrics Sidebar Section */}
@@ -1023,7 +1021,13 @@ const SessionView = ({ patient, onEndSession }) => {
         .monitor-container { display: grid; grid-template-columns: 350px 1fr; gap: 2rem; margin-top: 1rem; }
         .monitor-sidebar { display: flex; flex-direction: column; gap: 1rem; }
         
-        /* Pro Monitor Hub */
+        .pro-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; background: var(--secondary); border: 1px solid var(--border); border-radius: 24px; margin-bottom: 2rem; }
+        .ph-left { display: flex; align-items: center; gap: 1.5rem; }
+        .btn-back { display: flex; align-items: center; gap: 0.75rem; background: var(--surface); border: 1px solid var(--border); padding: 0.6rem 1.2rem; border-radius: 12px; color: var(--text-main); font-weight: 600; cursor: pointer; transition: 0.3s; }
+        .btn-back:hover { background: var(--border); border-color: var(--primary); color: var(--primary); }
+        .patient-tag { font-family: 'Outfit'; font-size: 0.9rem; color: var(--text-muted); }
+        .patient-tag strong { color: var(--text-main); font-weight: 600; }
+        .pt-id { font-family: 'JetBrains Mono'; font-size: 0.75rem; opacity: 0.5; margin-left: 0.5rem; }
         .pro-analytics-hub { min-height: 1400px; padding: 2rem; }
         .pro-monitor-grid.vertical-stack { display: flex; flex-direction: column; gap: 2.5rem; margin-top: 2rem; }
         .dual-monitor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
