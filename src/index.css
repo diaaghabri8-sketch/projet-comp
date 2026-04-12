@@ -85,7 +85,7 @@ body {
   position: relative;
   z-index: 10;
   overflow-x: hidden;
-  padding-top: 130px; /* Space for the enourmously tall academic navbar */
+  padding-top: 200px; /* Space for the enourmously tall academic navbar */
 }
 
 [data-scroll-container] {

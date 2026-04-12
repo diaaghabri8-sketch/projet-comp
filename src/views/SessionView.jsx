@@ -6,9 +6,9 @@ import { ArrowLeft, Activity, Bluetooth, PowerOff, Zap, RefreshCw, Cpu, AlertTri
 import { motion, AnimatePresence } from 'framer-motion';
 import Magnetic from '../components/Magnetic';
 
-const MiniGraph = React.memo(({ data, color, label, unit, threshold, thresholdType = 'above', type = 'line', secondaryData = null, secondaryColor = null, highlights = [] }) => {
+const MiniGraph = React.memo(({ data, color, label, unit, threshold, thresholdType = 'above', type = 'line', secondaryData = null, secondaryColor = null, highlights = [], peaks = null }) => {
   const width = 400;
-  const height = 120;
+  const height = 100; // Compressed height
   const padding = 10;
 
   const safeId = React.useMemo(() => label.replace(/[^a-zA-Z0-0]/g, '-'), [label]);
@@ -18,7 +18,6 @@ const MiniGraph = React.memo(({ data, color, label, unit, threshold, thresholdTy
     const validD = data.filter(v => Number.isFinite(v));
     if (validD.length < 2) return [];
 
-    // Safer min/max without spread to prevent stack overflow
     let min = validD[0], max = validD[0];
     for (let i = 1; i < validD.length; i++) {
       if (validD[i] < min) min = validD[i];
@@ -29,6 +28,7 @@ const MiniGraph = React.memo(({ data, color, label, unit, threshold, thresholdTy
     const range = max - min || 1;
     return validD.map((val, i) => ({
       x: (i / (validD.length - 1)) * width,
+      val,
       y: height - ((val - min) / range) * (height - 2 * padding) - padding
     }));
   }, [data, width, height, padding]);
@@ -41,27 +41,21 @@ const MiniGraph = React.memo(({ data, color, label, unit, threshold, thresholdTy
     points.length > 1 ? `${pathData} L ${width},${height} L 0,${height} Z` : ''
     , [pathData, width, height]);
 
-  const secondaryPath = React.useMemo(() => {
-    if (!secondaryData || secondaryData.length < 2) return '';
-    const sPoints = (function () {
-      const validD = secondaryData.filter(v => Number.isFinite(v));
-      if (validD.length < 2) return [];
-      const min = Math.min(...validD) * 0.95;
-      const max = Math.max(...validD) * 1.05 || 1;
-      const range = max - min || 1;
-      return validD.map((val, i) => ({
-        x: (i / (validD.length - 1)) * width,
-        y: height - ((val - min) / range) * (height - 2 * padding) - padding
-      }));
-    })();
-    return sPoints.length > 1 ? `M ${sPoints.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' L ')}` : '';
-  }, [secondaryData, width, height, padding]);
+  const peakMarkers = React.useMemo(() => {
+    if (!peaks || !points.length) return [];
+    return points.filter((p, i) => peaks[i] > 0).map((p, i) => (
+      <g key={i}>
+        <line x1={p.x - 5} y1={p.y - 5} x2={p.x + 5} y2={p.y + 5} stroke="#ef4444" strokeWidth="2" />
+        <line x1={p.x + 5} y1={p.y - 5} x2={p.x - 5} y2={p.y + 5} stroke="#ef4444" strokeWidth="2" />
+      </g>
+    ));
+  }, [peaks, points]);
 
   const latestValue = data[data.length - 1];
   const isStressed = threshold && (thresholdType === 'below' ? latestValue < threshold : latestValue > threshold);
 
   if (!data || data.length === 0) return (
-    <div className="mini-graph-placeholder glass-card">Calcul en cours...</div>
+    <div className="mini-graph-placeholder glass-card" style={{ height: 100 }}>Calcul...</div>
   );
 
   return (
@@ -69,20 +63,15 @@ const MiniGraph = React.memo(({ data, color, label, unit, threshold, thresholdTy
       <div className="graph-header">
         <div className="title-group">
           <span className="dot" style={{ background: color }}></span>
-          <span className="label">{label}</span>
+          <span className="label" style={{ fontSize: '0.65rem' }}>{label}</span>
         </div>
         <div className="value-group">
-          {highlights.map((h, i) => (
-            <span key={i} className="highlight-badge" style={{ borderColor: h.color, color: h.color }}>
-              {h.label}: {h.value}
-            </span>
-          ))}
-          <span className="main-value" style={{ color }}>
+          <span className="main-value" style={{ color, fontSize: '1.2rem' }}>
             {Number(latestValue || 0).toFixed(unit === 'ms' ? 0 : 1)} <small>{unit}</small>
           </span>
         </div>
       </div>
-      <div className="svg-stage glass-card themed-graph-bg">
+      <div className="svg-stage glass-card themed-graph-bg" style={{ height: 100 }}>
         <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
           <defs>
             <pattern id={`grid-${safeId}`} width="40" height="40" patternUnits="userSpaceOnUse">
@@ -94,17 +83,9 @@ const MiniGraph = React.memo(({ data, color, label, unit, threshold, thresholdTy
             </linearGradient>
           </defs>
           <rect width="100%" height="100%" fill={`url(#grid-${safeId})`} />
-
-          {secondaryPath && (
-            <path d={secondaryPath} fill="none" stroke={secondaryColor} strokeWidth="1.5" strokeDasharray="4 2" opacity="0.6" />
-          )}
-
           <path d={areaData} fill={`url(#grad-${safeId})`} />
-          <path d={pathData} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
-
-          {threshold && (
-            <line x1="0" y1={height / 2.5} x2={width} y2={height / 2.5} stroke="rgba(239, 68, 68, 0.4)" strokeDasharray="5 5" />
-          )}
+          <path d={pathData} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" />
+          {peakMarkers}
         </svg>
       </div>
     </div>
@@ -114,7 +95,7 @@ const MiniGraph = React.memo(({ data, color, label, unit, threshold, thresholdTy
 
 const FrequencyGraph = React.memo(({ data, labels, color, label, unit }) => {
   const width = 400;
-  const height = 150;
+  const height = 100;
   const padding = 20;
   const safeId = React.useMemo(() => label.replace(/[^a-zA-Z0-0]/g, '-'), [label]);
 
@@ -138,7 +119,7 @@ const FrequencyGraph = React.memo(({ data, labels, color, label, unit }) => {
     , [points]);
 
   if (!data || data.length < 2) return (
-    <div className="mini-graph-placeholder glass-card">Calcul spectral...</div>
+    <div className="mini-graph-placeholder glass-card" style={{ height: 100 }}>Calcul...</div>
   );
 
   return (
@@ -744,44 +725,30 @@ const SessionView = ({ patient, onEndSession }) => {
         animate="visible"
         exit="exit"
       >
-        <div className="session-topbar glass-card">
-          <Magnetic>
-            <button className="btn btn-secondary icon-btn-text" onClick={() => { disconnect(); onEndSession(); }}>
-              <ArrowLeft size={16} /> Fin d'examen
-            </button>
-          </Magnetic>
-          <div className="patient-tag">
-            Patient en cours : <strong>{patient?.firstName} {patient?.lastName}</strong> <span className="pt-id">#{patient?.id}</span>
-          </div>
-        </div>
 
         <div className="monitor-container">
-          <div className="monitor-sidebar">
+          <div className="monitor-sidebar" style={{ maxHeight: '850px', overflowY: 'auto' }}>
             {/* BPM Panel */}
             <motion.div className="panel data-panel glass-card" variants={panelVariants}>
-              <h3><HeartPulse size={18} className="mr-2" /> Rythme Cardiaque</h3>
-              <div className="bpm-display">
-                <motion.div className={`heart-icon ${isBeating ? 'beat' : ''}`} animate={isBeating ? { scale: [1, 1.2, 1] } : {}}>
-                  <HeartPulse size={48} color={isBeating ? "#ef4444" : "#64748b"} />
-                </motion.div>
+              <div className="flex items-center justify-between">
+                <h3><HeartPulse size={16} className="mr-2" /> Rythme</h3>
                 <div className="bpm-value-box">
-                  <span className="val">{bpm || '--'}</span>
+                  <span className="val" style={{ fontSize: '1.5rem' }}>{bpm || '--'}</span>
                   <span className="unit">BPM</span>
                 </div>
               </div>
             </motion.div>
 
-            {/* New Composite Stress Score Gauge */}
+            {/* Stress Score Gauge */}
             <motion.div className="panel score-panel glass-card" variants={panelVariants}>
               <div className="flex items-center justify-between mb-2">
-                <h3><Gauge size={18} className="mr-2" /> Stress Score</h3>
+                <h3><Gauge size={16} className="mr-2" /> Stress</h3>
                 <span className={`score-label ${compositeScore > 80 ? 'high' : compositeScore > 50 ? 'med' : 'low'}`}>
                   {compositeScore > 80 ? 'CRITIQUE' : compositeScore > 50 ? 'MODÉRÉ' : 'OPTIMAL'}
                 </span>
               </div>
-
-              <div className="score-gauge-container">
-                <svg viewBox="0 0 100 50" className="gauge-svg">
+              <div className="score-gauge-container" style={{ height: '60px' }}>
+                <svg viewBox="0 0 100 50" className="gauge-svg" style={{ width: '120px' }}>
                   <path d="M 10 45 A 40 40 0 0 1 90 45" fill="none" stroke="#ddd" strokeWidth="8" strokeLinecap="round" strokeOpacity="0.1" />
                   <motion.path
                     d="M 10 45 A 40 40 0 0 1 90 45"
@@ -800,141 +767,52 @@ const SessionView = ({ patient, onEndSession }) => {
                     </linearGradient>
                   </defs>
                 </svg>
-                <div className="score-value">{compositeScore}</div>
+                <div className="score-value" style={{ fontSize: '1.5rem', bottom: '-5px' }}>{compositeScore}</div>
               </div>
-
-
             </motion.div>
 
-            {/* New Medical Metrics Sidebar Section */}
+            {/* Live Parameters Summary */}
             <motion.div className="panel metrics-panel glass-card" variants={panelVariants}>
-              <h3><Activity size={18} className="mr-2" /> Live Parameters</h3>
-              <div className="metrics-v-grid">
-                <div className="metric-box">
-                  <label>Heart Rate (BPM)</label>
-                  <span className="val">{bpm || '--'}</span>
-                </div>
-                <div className="metric-box">
-                  <label>RMSSD</label>
-                  <span className="val" style={{ color: '#00ff88' }}>{Number(hrvMetrics.rmssd || 0).toFixed(0)} <small>ms</small></span>
-                </div>
-                <div className="metric-box">
-                  <label>HF Power</label>
-                  <span className="val" style={{ color: '#44ff44' }}>{Number(hrvMetrics.hf || 0).toFixed(0)}</span>
-                </div>
-                <div className="metric-box status-box mt-4" style={{
-                  gridColumn: 'span 2',
-                  borderColor: hrvMetrics.status === 'High Stress' ? '#f43f5e' :
-                    hrvMetrics.status === 'Stressed' ? '#f59e0b' :
-                      hrvMetrics.status === 'Mild Stress' ? '#eab308' : '#00ff88'
-                }}>
-                  <label>Clinical Decision</label>
-                  <span className="val" style={{
-                    color: hrvMetrics.status === 'High Stress' ? '#f43f5e' :
-                      hrvMetrics.status === 'Stressed' ? '#f59e0b' :
-                        hrvMetrics.status === 'Mild Stress' ? '#eab308' : '#00ff88'
-                  }}>
+              <div className="metrics-v-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                <div className="metric-box status-box" style={{ gridColumn: 'span 2', padding: '0.5rem', marginBottom: '0.5rem' }}>
+                  <label>Clinical Status</label>
+                  <span className="val" style={{ fontSize: '0.9rem', color: hrvMetrics.status === 'High Stress' ? '#f43f5e' : '#00ff88' }}>
                     {hrvMetrics.status || 'Analysing...'}
                   </span>
-                  <p className="text-[10px] opacity-70 mt-1">
-                    {hrvMetrics.status === 'High Stress' ? 'Total Vagal Depletion + Cardiovascular Activation' :
-                      hrvMetrics.status === 'Stressed' ? 'Clinical Stress - Parasympathetic Drop' :
-                        hrvMetrics.status === 'Mild Stress' ? 'Fatigue - Early Stress detected' : 'System Homeostasis'}
-                  </p>
                 </div>
               </div>
             </motion.div>
 
-            {/* Session & Recording Controls */}
+            {/* Controls */}
             <motion.div className="panel recording-panel glass-card" variants={panelVariants}>
-              <div className="flex items-center justify-between mb-4">
-                <h3><Zap size={18} className="mr-2" /> Contrôle de Séance</h3>
-                <div className={`timer-badge ${isRecording ? 'pulse-red' : ''}`}>
+              <div className="flex items-center justify-between mb-2">
+                <h3 style={{ fontSize: '0.8rem' }}><Zap size={14} className="mr-2" /> Contrôle</h3>
+                <div className={`timer-badge ${isRecording ? 'pulse-red' : ''}`} style={{ fontSize: '0.75rem' }}>
                   {formatTime(recordingTime)}
                 </div>
               </div>
-
               <div className="session-controls-grid">
                 {sessionStatus === 'idle' ? (
-                  <button className="btn btn-primary start-btn" onClick={handleStartSession}>
-                    <Zap size={16} /> START
-                  </button>
+                  <button className="btn btn-primary start-btn btn-sm" onClick={handleStartSession}>START</button>
                 ) : (
-                  <>
-                    <button className={`btn ${sessionStatus === 'paused' ? 'btn-warning' : 'btn-secondary'} hold-btn`} onClick={handleHoldSession}>
-                      <Pause size={16} /> {sessionStatus === 'paused' ? 'RESUME' : 'HOLD'}
-                    </button>
-                    <button className="btn btn-danger stop-btn" onClick={handleStopSession}>
-                      <Square size={16} /> STOP
-                    </button>
-                  </>
+                  <button className="btn btn-danger stop-btn btn-sm" onClick={handleStopSession} style={{ gridColumn: 'span 2' }}>STOP</button>
                 )}
+                <button className={`btn btn-sm w-full mt-2 ${isRecording ? 'btn-record-active' : 'btn-outline-record'}`} style={{ gridColumn: 'span 2' }} onClick={isRecording ? handleStopRecording : handleStartRecording}>
+                  {isRecording ? 'STOP REC' : 'START REC'}
+                </button>
               </div>
-
-              <div className="recording-actions mt-4">
-                {!isRecording ? (
-                  <button className="btn btn-outline-record w-full" onClick={handleStartRecording}>
-                    <Circle size={14} className="fill-red-500 text-red-500 mr-2" /> ENREGISTRER LA SÉANCE
-                  </button>
-                ) : (
-                  <button className="btn btn-record-active w-full" onClick={handleStopRecording}>
-                    <Square size={14} className="mr-2" /> STOP ENREGISTREMENT
-                  </button>
-                )}
-              </div>
-
-              {isRecording && (
-                <div className="recording-status-msg mt-3 text-center">
-                  <div className="flex items-center justify-center gap-2 text-red-400 text-xs font-bold uppercase tracking-widest">
-                    <span className="rec-dot"></span> ENREGISTREMENT EN COURS...
-                  </div>
-                </div>
-              )}
             </motion.div>
 
-            {/* Control Panel (Hardware) */}
+            {/* Hardware */}
             <motion.div className="panel hardware-panel glass-card" variants={panelVariants}>
-              <h3><Bluetooth size={18} className="mr-2" /> Connexion Capteur</h3>
-
-              {error && <div className="error-banner mb-3"><AlertTriangle size={14} /> {error}</div>}
-
-              <div className="connection-status">
-                Matériel : <span className={`status-dot ${isConnected ? 'on' : 'off'}`}></span>
-                {isConnected ? 'ESP32 CONNECTÉ' : isSimulating ? 'SIMULATION ACTIVE' : 'NON CONNECTÉ'}
+              <h3 style={{ fontSize: '0.8rem' }}><Bluetooth size={14} className="mr-2" /> Hardware</h3>
+              <div className="connection-status" style={{ fontSize: '0.7rem' }}>
+                <span className={`status-dot ${isConnected ? 'on' : 'off'}`}></span>
+                {isConnected ? 'CONNECTÉ' : isSimulating ? 'SIMULATION' : 'NON CONNECTÉ'}
               </div>
-
-              <div className="action-stack mt-4" style={{ display: 'grid', gap: '1rem' }}>
-                <Magnetic>
-                  {!isConnected ? (
-                    <button className="btn btn-secondary w-full" onClick={() => { setIsSimulating(false); connect(); }}>
-                      <Zap size={16} /> Appairer l'ESP32
-                    </button>
-                  ) : (
-                    <button className="btn btn-danger w-full opacity-50" onClick={disconnect}>
-                      <PowerOff size={16} /> Débrancher
-                    </button>
-                  )}
-                </Magnetic>
-                <Magnetic>
-                  <button className={`btn btn-secondary w-full ${isSimulating ? 'active-sim' : ''}`} onClick={() => setIsSimulating(!isSimulating)}>
-                    <RefreshCw size={16} className={isSimulating ? "spin" : ""} />
-                    {isSimulating ? "Stop Simulation" : "Mode Simulation"}
-                  </button>
-                </Magnetic>
-              </div>
-            </motion.div>
-
-            <motion.div className="panel stats-panel glass-card" variants={panelVariants}>
-              <h3><Cpu size={18} className="mr-2" /> Capteur Brut</h3>
-              <div className="stat-grid">
-                <div className="stat-box">
-                  <span>Signal HP</span>
-                  <motion.strong animate={{ opacity: [0.5, 1] }}>{bleData.signalHP.toFixed(1)}</motion.strong>
-                </div>
-                <div className="stat-box">
-                  <span>Pulse Raw</span>
-                  <strong>{bleData.pulse.toFixed(1)}</strong>
-                </div>
+              <div className="flex gap-2 mt-2">
+                <button className="btn btn-secondary btn-xs" onClick={() => isConnected ? disconnect() : connect()}>{isConnected ? 'Disconn' : 'Connect'}</button>
+                <button className="btn btn-secondary btn-xs" onClick={() => setIsSimulating(!isSimulating)}>Sim</button>
               </div>
             </motion.div>
           </div>
@@ -944,72 +822,27 @@ const SessionView = ({ patient, onEndSession }) => {
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
           >
-            <div className="monitor-header">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center">
-                  <Activity className="text-primary pulse-slow" />
-                </div>
-                <div>
-
-                  <div className="hub-badges">
-                    <span className="badge-tech font-bold text-primary uppercase">{patient.firstName} {patient.lastName}</span>
-                    <span className="badge-tech">{age}y / {sex === 'f' ? 'Female' : 'Male'}</span>
-                    <span className="badge-tech">MIN RMSSD: {rmssdNorm}ms</span>
-                  </div>
-                </div>
+            <div className="monitor-header" style={{ marginBottom: '1rem' }}>
+              <div className="hub-badges">
+                <span className="badge-tech font-bold text-primary uppercase">{patient.firstName} {patient.lastName}</span>
+                <span className="badge-tech">Seuil: {rmssdNorm}ms</span>
               </div>
             </div>
-            <div className="pro-monitor-grid vertical-stack">
-              <MiniGraph data={history.pulseRaw} color="#22d3ee" label="1. Peak Detection (Pulse Events)" unit="raw" />
-              <MiniGraph data={history.signalHP} color="#00f2fe" label="2. PPG Signal (Time Domain)" unit="u.a" />
-              <div className="dual-monitor-grid">
-                <FrequencyGraph data={history.ppgSpectrum} color="#a855f7" label="3a. PPG Signal Spectrum (10Hz)" unit="Hz" />
-                <FrequencyGraph data={history.rrSpectrum} color="#f59e0b" label="3b. IBI Variability Spectrum (4Hz)" unit="Hz" />
-              </div>
-              <MiniGraph data={history.hf} color="#44ff44" label="4. HF Power (0.15–0.40 Hz)" unit="ms²" />
-              <MiniGraph
-                data={history.rmssd}
-                color="#00ff88"
-                label="5. RMSSD (Short-term HRV)"
-                unit="ms"
-                threshold={rmssdNorm}
-                thresholdType="below"
-              />
-              <MiniGraph data={history.rr} color="#38bdf8" label="6. NN Intervals (IBI - Filtered RR)" unit="ms" />
 
-              {/* Algorithm Analysis Panel */}
-              <motion.div className="panel algo-panel glass-card mt-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                <div className="flex items-center gap-3 mb-4">
-                  <Brain className="text-primary" />
-                  <h3 className="text-xl font-bold">Logique Décisionnelle (Standard Clinique)</h3>
-                </div>
-                <div className="algo-grid">
-                  <div className="algo-item">
-                    <HeartPulse size={20} className="text-green-400" />
-                    <div>
-                      <h4>RMSSD Normatif </h4>
-                      <p>Seuil dynamique basé sur l'âge et le sexe ({rmssdNorm}ms). Toute valeur inférieure indique un niveau de stress élevé.</p>
-                    </div>
-                  </div>
-                  <div className="algo-item">
-                    <Activity size={20} className="text-blue-400" />
-                    <div>
-                      <h4>HF Power (x4)</h4>
-                      <p>Tonus parasympathique et état de relaxation profonde.</p>
-                    </div>
-                  </div>
-                  <div className="algo-item">
-                    <Zap size={20} className="text-yellow-400" />
-                    <div>
-                      <h4>BPM (x2)</h4>
-                      <p>Réaction immédiate au stress physiologique.</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="algo-footer mt-6 p-4 rounded-xl bg-white/5 border border-white/10">
-                  <p className="text-sm italic opacity-80">"L'intégration pondérée assure que la récupération à long terme est priorisée sur les réactions immédiates."</p>
-                </div>
-              </motion.div>
+            <div className="pro-monitor-grid vertical-stack" style={{ gap: '0.5rem' }}>
+              <MiniGraph data={history.signalHP} peaks={history.pulseRaw} color="#00f2fe" label="1. PPG Signal & Peaks Overlay" unit="u.a" />
+              <MiniGraph data={history.rr} color="#38bdf8" label="2. RR Intervals (NN Trend)" unit="ms" />
+
+              <div className="dual-monitor-grid">
+                <FrequencyGraph data={history.ppgSpectrum} color="#a855f7" label="3a. PPG FFT" unit="Hz" />
+                <FrequencyGraph data={history.rrSpectrum} color="#f59e0b" label="3b. RR FFT" unit="Hz" />
+              </div>
+
+              <div className="dual-monitor-grid">
+                <MiniGraph data={history.hf} color="#44ff44" label="4a. HF Power" unit="ms²" />
+                <MiniGraph data={history.rmssd} color="#00ff88" label="4b. RMSSD (HRV)" unit="ms" threshold={rmssdNorm} thresholdType="below" />
+              </div>
+
             </div>
           </motion.div>
         </div>
@@ -1017,99 +850,36 @@ const SessionView = ({ patient, onEndSession }) => {
 
         <style dangerouslySetInnerHTML={{
           __html: `
-        .monitor-container { display: grid; grid-template-columns: 350px 1fr; gap: 2rem; margin-top: 1rem; margin-bottom: 2rem; }
-        .monitor-container { display: grid; grid-template-columns: 350px 1fr; gap: 2rem; margin-top: 1rem; }
-        .monitor-sidebar { display: flex; flex-direction: column; gap: 1rem; }
+        .monitor-container { display: grid; grid-template-columns: 280px 1fr; gap: 1rem; margin-top: 1rem; }
+        .monitor-sidebar { display: flex; flex-direction: column; gap: 0.75rem; }
+        .pro-analytics-hub { min-height: auto; padding: 1rem; overflow: hidden; }
+        .pro-monitor-grid.vertical-stack { display: flex; flex-direction: column; gap: 0.75rem; }
+        .dual-monitor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+        .frequency-plot .svg-stage { height: 100px; }
         
-        .pro-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; background: var(--secondary); border: 1px solid var(--border); border-radius: 24px; margin-bottom: 2rem; }
-        .ph-left { display: flex; align-items: center; gap: 1.5rem; }
-        .btn-back { display: flex; align-items: center; gap: 0.75rem; background: var(--surface); border: 1px solid var(--border); padding: 0.6rem 1.2rem; border-radius: 12px; color: var(--text-main); font-weight: 600; cursor: pointer; transition: 0.3s; }
-        .btn-back:hover { background: var(--border); border-color: var(--primary); color: var(--primary); }
-        .patient-tag { font-family: 'Outfit'; font-size: 0.9rem; color: var(--text-muted); }
-        .patient-tag strong { color: var(--text-main); font-weight: 600; }
-        .pt-id { font-family: 'JetBrains Mono'; font-size: 0.75rem; opacity: 0.5; margin-left: 0.5rem; }
-        .pro-analytics-hub { min-height: 1400px; padding: 2rem; }
-        .pro-monitor-grid.vertical-stack { display: flex; flex-direction: column; gap: 2.5rem; margin-top: 2rem; }
-        .dual-monitor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-        .frequency-plot .svg-stage { height: 180px; }
-        .frequency-plot text { font-family: 'JetBrains Mono'; }
+        .metric-box { background: rgba(0,0,0,0.03); padding: 0.4rem; border-radius: 8px; border: 1px solid var(--border); }
+        .metric-box label { font-size: 10px; opacity: 0.6; }
+        .metric-box .val { font-size: 0.9rem; font-weight: 700; }
         
-        .metrics-v-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 1rem; }
-        .metric-box { background: rgba(0,0,0,0.03); padding: 0.75rem; border-radius: 12px; border: 1px solid var(--border); }
-        .metric-box label { display: block; font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 4px; }
-        .metric-box .val { font-family: 'JetBrains Mono'; font-weight: 800; font-size: 1.1rem; color: var(--primary); }
-        .metric-box .val small { font-size: 0.7rem; font-weight: 400; opacity: 0.5; }
-        .status-box { border-width: 2px; background: rgba(0,0,0,0.2) !important; }
+        .pro-graph-card { background: var(--surface); border: 1px solid var(--border); padding: 0.5rem; border-radius: 12px; }
+        .svg-stage.themed-graph-bg { background: rgba(0,0,0,0.2) !important; }
         
-        .pro-graph-card { display: flex; flex-direction: column; gap: 1rem; }
+        .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.75rem; }
+        .btn-xs { padding: 0.2rem 0.5rem; font-size: 0.65rem; }
         
-        .svg-stage.themed-graph-bg { padding: 0.5rem; border-radius: 20px; overflow: hidden; background: var(--secondary) !important; border: 1px solid var(--border); color: var(--text-muted); }
-        .mini-graph-placeholder { height: 120px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 0.8rem; }
-        .graph-header { display: flex; justify-content: space-between; align-items: center; }
-        .title-group { display: flex; align-items: center; gap: 0.75rem; }
-        .title-group .dot { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 10px currentColor; }
-        .title-group .label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .panel h3 { font-size: 0.75rem; margin-bottom: 0px; }
+        .bpm-value-box .val { font-weight: 900; color: var(--primary); }
+        .bpm-value-box .unit { font-size: 0.6rem; margin-left: 2px; opacity: 0.5; }
         
-        .value-group { display: flex; align-items: center; gap: 0.75rem; }
-        .highlight-badge { padding: 0.2rem 0.5rem; border-radius: 6px; border: 1px solid; font-size: 0.7rem; font-family: 'JetBrains Mono'; font-weight: 700; background: rgba(0,0,0,0.3); }
-        .main-value { font-family: 'Outfit'; font-weight: 800; font-size: 1.6rem; }
-        .main-value small { font-size: 0.75rem; opacity: 0.6; }
+        .timer-badge { font-family: 'JetBrains Mono'; background: rgba(0,0,0,0.3); border-radius: 4px; padding: 2px 6px; }
         
-        .svg-stage { padding: 0.5rem; border-radius: 20px; overflow: hidden; background: #050508 !important; border: 1px solid rgba(255,255,255,0.03); }
-        .mini-graph-placeholder { height: 120px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 0.8rem; }
+        .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+        .status-dot.on { background: #10b981; box-shadow: 0 0 8px #10b981; }
+        .status-dot.off { background: #ef4444; }
         
-        /* Recording Styles */
-        .timer-badge { background: rgba(0,0,0,0.4); padding: 4px 12px; border-radius: 8px; font-family: 'JetBrains Mono'; font-weight: 800; color: var(--primary); font-size: 0.9rem; border: 1px solid var(--border); }
-        .session-controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-        .session-controls-grid .start-btn { grid-column: span 2; }
-        .btn-warning { background: #eab308; color: #000; }
-        .btn-outline-record { border: 1px solid rgba(239, 68, 68, 0.4); color: white; background: rgba(239, 68, 68, 0.05); }
-        .btn-outline-record:hover { background: rgba(239, 68, 68, 0.15); border-color: #ef4444; }
-        .btn-record-active { background: #ef4444; color: white; animation: rec-glow 2s infinite; }
-        
-        .pulse-red { color: #ef4444; text-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
-        .rec-dot { width: 8px; height: 8px; background: #ef4444; border-radius: 50%; display: inline-block; animation: blink 1s infinite; }
-        
-        @keyframes rec-glow { 0%, 100% { box-shadow: 0 0 5px rgba(239, 68, 68, 0.2); } 50% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.4); } }
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-        
-        .pulse-slow { animation: pulse 3s infinite ease-in-out; }
-        @keyframes pulse { 0%, 100% { opacity: 0.5; transform: scale(1); } 50% { opacity: 1; transform: scale(1.1); } }
-        
-        .spin { animation: rotate 2s linear infinite; }
-        @keyframes rotate { 100% { transform: rotate(360deg); } }
-        .active-sim { border-color: var(--primary) !important; color: var(--primary) !important; box-shadow: 0 0 15px rgba(99, 102, 241, 0.2); }
-        
-        /* Alert state */
-        .pro-graph-card.alert .svg-stage { border-color: rgba(239, 68, 68, 0.3); }
-        .pro-graph-card.alert .main-value { color: var(--danger) !important; }
-
-        /* Scoring & Algorithm Panels */
-        .score-gauge-container { position: relative; width: 100%; height: 100px; display: flex; align-items: center; justify-content: center; }
-        .gauge-svg { width: 180px; transform: rotate(0deg); }
-        .score-value { position: absolute; bottom: 0; font-size: 2.5rem; font-weight: 900; family-font: 'Outfit'; color: var(--text-main); }
-        .score-label { font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 4px; }
-        .score-label.low { background: #22c55e22; color: #22c55e; }
-        .score-label.med { background: #eab30822; color: #eab308; }
-        .score-label.high { background: #ef444422; color: #ef4444; }
-        .weighted-info { text-align: center; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
-
-        .algo-grid { display: grid; gap: 1.5rem; margin-top: 1rem; }
-        .algo-item { display: flex; gap: 1rem; align-items: flex-start; }
-        .algo-item h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 2px; }
-        .algo-item p { font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; }
-        .text-green-400 { color: #4ade80; }
-        .text-blue-400 { color: #60a5fa; }
-        .text-yellow-400 { color: #facc15; }
-        
-        .error-boundary-box { 
-          background: rgba(10, 10, 15, 0.95);
-          border: 2px solid #ef4444;
-          box-shadow: 0 0 50px rgba(239, 68, 68, 0.2);
-          max-width: 500px;
-          margin: 100px auto;
-          color: white;
-        }
+        .btn-outline-record { border: 1px solid var(--danger); color: var(--danger); background: transparent; }
+        .btn-record-active { background: var(--danger); color: white; animation: rec-blink 1s infinite; }
+        @keyframes rec-blink { 50% { opacity: 0.7; } }
       `}} />
       </motion.div>
     </RenderErrorBoundary>
